@@ -1,0 +1,680 @@
+local MacLib = loadstring(game:HttpGet("https://github.com/biggaboy212/Maclib/releases/latest/download/maclib.txt"))()
+
+local Window = MacLib:Window({
+    Title = "randomdev Hub",
+    Subtitle = "v1.0",
+    Size = UDim2.fromOffset(650, 550),
+    DragStyle = 1,
+    DisabledWindowControls = {},
+    ShowUserInfo = true,
+    Keybind = Enum.KeyCode.RightControl,
+    AcrylicBlur = true,
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local Config = {
+    ESP = false,
+    Noclip = false,
+    InfJump = false,
+    JumpHack = false,
+    SpeedHack = false,
+    Fly = false,
+    WalkSpeed = 16,
+    JumpPower = 50,
+    AutoFarm = false,
+    FarmSpeed = 0.1,
+    Invisible = false,
+    InvisChair = nil,
+    FlySpeed = 50,
+    KillAll = false,
+    Aimbot = false,
+    AimSmoothness = 0.1,
+    AimPart = "Head",
+    AutoShoot = false,
+    AutoStab = false
+}
+
+local Connections = {}
+local Objects = {}
+
+local TabGroup = Window:TabGroup()
+
+local Tabs = {
+    Main = TabGroup:Tab({ Name = "Main", Image = "rbxassetid://10723407389" }),
+    Player = TabGroup:Tab({ Name = "Player", Image = "rbxassetid://10734898355" }),
+    Combat = TabGroup:Tab({ Name = "Combat", Image = "rbxassetid://10723407389" }),
+    Visual = TabGroup:Tab({ Name = "Visual", Image = "rbxassetid://10723407389" }),
+    Server = TabGroup:Tab({ Name = "Server", Image = "rbxassetid://10723407389" }),
+    Settings = TabGroup:Tab({ Name = "Settings", Image = "rbxassetid://10734950309" })
+}
+
+local Sections = {
+    MainLeft = Tabs.Main:Section({ Side = "Left" }),
+    PlayerLeft = Tabs.Player:Section({ Side = "Left" }),
+    CombatLeft = Tabs.Combat:Section({ Side = "Left" }),
+    VisualLeft = Tabs.Visual:Section({ Side = "Left" }),
+    ServerLeft = Tabs.Server:Section({ Side = "Left" }),
+    SettingsLeft = Tabs.Settings:Section({ Side = "Left" }),
+}
+
+Sections.MainLeft:Header({ Text = "Auto Farm" })
+
+Sections.MainLeft:Toggle({
+    Name = "Auto Farm Coins",
+    Default = false,
+    Callback = function(v)
+        Config.AutoFarm = v
+    end,
+}, "AutoFarm")
+
+Sections.MainLeft:Slider({
+    Name = "Farm Speed (Delay)",
+    Default = 0.1,
+    Minimum = 0.01,
+    Maximum = 1,
+    Precision = 2,
+    DisplayMethod = "Value",
+    Callback = function(v)
+        Config.FarmSpeed = v
+    end
+}, "FarmSpeed")
+
+Sections.MainLeft:Divider()
+
+Sections.MainLeft:Header({ Text = "Movement" })
+
+Sections.MainLeft:Toggle({
+    Name = "Fly",
+    Default = false,
+    Callback = function(v)
+        Config.Fly = v
+        if not v and LocalPlayer.Character then
+            LocalPlayer.Character.Humanoid.PlatformStand = false
+        end
+    end,
+}, "Fly")
+
+Sections.MainLeft:Slider({
+    Name = "Fly Speed",
+    Default = 50,
+    Minimum = 10,
+    Maximum = 300,
+    Precision = 0,
+    Callback = function(v)
+        Config.FlySpeed = v
+    end
+}, "FlySpeed")
+
+Sections.MainLeft:Toggle({
+    Name = "No Clip",
+    Default = false,
+    Callback = function(v)
+        Config.Noclip = v
+    end,
+}, "Noclip")
+
+Sections.MainLeft:Toggle({
+    Name = "Inf Jump",
+    Default = false,
+    Callback = function(v)
+        Config.InfJump = v
+    end,
+}, "InfJump")
+
+Sections.MainLeft:Button({
+    Name = "Create Spam Jump GUI",
+    Callback = function()
+        if LocalPlayer.PlayerGui:FindFirstChild("AutoJumpGUI") then
+            LocalPlayer.PlayerGui.AutoJumpGUI:Destroy()
+        end
+
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Parent = LocalPlayer.PlayerGui
+        screenGui.Name = "AutoJumpGUI"
+        screenGui.ResetOnSpawn = false
+
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0, 70, 0, 70)
+        button.Position = UDim2.new(0.1, 0, 0.1, 0)
+        button.Text = "OFF"
+        button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        button.BackgroundTransparency = 0.75
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.Font = Enum.Font.GothamBold
+        button.TextSize = 16
+        button.Parent = screenGui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0.3, 0)
+        corner.Parent = button
+
+        local jumping = false
+
+        local function toggleJumping()
+            jumping = not jumping
+            button.Text = jumping and "ON" or "OFF"
+            if jumping then
+                task.spawn(function()
+                    while jumping do
+                        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+                        if hum and hum:GetState() ~= Enum.HumanoidStateType.Freefall then
+                            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                        end
+                        task.wait(0.01)
+                    end
+                end)
+            end
+        end
+
+        button.MouseButton1Click:Connect(toggleJumping)
+
+        local dragging, dragInput, dragStart, startPos
+        local function update(input)
+            local delta = input.Position - dragStart
+            button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+        button.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = button.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+        button.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                update(input)
+            end
+        end)
+        
+        Window:Notify({ Title = "Spam Jump", Description = "GUI Created!", Lifetime = 3 })
+    end
+})
+
+Sections.PlayerLeft:Header({ Text = "Exploits" })
+
+Sections.PlayerLeft:Toggle({
+    Name = "Invisible",
+    Default = false,
+    Callback = function(v)
+        Config.Invisible = v
+        local char = LocalPlayer.Character
+        if char then
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+            if not root then return end
+            
+            if v then
+                for _, p in ipairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+                        p.Transparency = 0.5
+                    end
+                end
+                local savedpos = root.CFrame
+                char:MoveTo(Vector3.new(-25.95, 84, 3537.55))
+                task.wait(0.15)
+                if not Config.InvisChair then
+                    local Seat = Instance.new("Seat", workspace)
+                    Seat.Anchored = false
+                    Seat.CanCollide = false
+                    Seat.Name = "randomdevInvisChair"
+                    Seat.Transparency = 1
+                    Seat.Position = Vector3.new(-25.95, 84, 3537.55)
+                    Config.InvisChair = Seat
+                end
+                local Weld = Instance.new("Weld", Config.InvisChair)
+                Weld.Part0 = Config.InvisChair
+                Weld.Part1 = torso
+                Config.InvisChair.CFrame = savedpos
+            else
+                for _, p in ipairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+                        p.Transparency = 0
+                    end
+                end
+                if Config.InvisChair then
+                    Config.InvisChair:Destroy()
+                    Config.InvisChair = nil
+                end
+            end
+        end
+    end,
+}, "Invisible")
+
+Sections.PlayerLeft:Divider()
+
+Sections.PlayerLeft:Header({ Text = "Stats" })
+
+Sections.PlayerLeft:Toggle({
+    Name = "Speed Hack",
+    Default = false,
+    Callback = function(v)
+        Config.SpeedHack = v
+        if not v and LocalPlayer.Character then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16
+        end
+    end,
+}, "SpeedHack")
+
+Sections.PlayerLeft:Slider({
+    Name = "Walk Speed",
+    Default = 16,
+    Minimum = 1,
+    Maximum = 1000,
+    Precision = 0,
+    Callback = function(v)
+        Config.WalkSpeed = v
+    end
+}, "WalkSpeed")
+
+Sections.PlayerLeft:Toggle({
+    Name = "Jump Hack",
+    Default = false,
+    Callback = function(v)
+        Config.JumpHack = v
+        if not v and LocalPlayer.Character then
+            LocalPlayer.Character.Humanoid.JumpPower = 50
+        end
+    end,
+}, "JumpHack")
+
+Sections.PlayerLeft:Slider({
+    Name = "Jump Power",
+    Default = 50,
+    Minimum = 1,
+    Maximum = 1000,
+    Precision = 0,
+    Callback = function(v)
+        Config.JumpPower = v
+    end
+}, "JumpPower")
+
+Sections.CombatLeft:Header({ Text = "Aimbot" })
+
+Sections.CombatLeft:Toggle({
+    Name = "Aimbot",
+    Default = false,
+    Callback = function(v)
+        Config.Aimbot = v
+    end,
+}, "Aimbot")
+
+Sections.CombatLeft:Slider({
+    Name = "Smoothness",
+    Default = 0.1,
+    Minimum = 0.1,
+    Maximum = 1,
+    Precision = 2,
+    Callback = function(v)
+        Config.AimSmoothness = v
+    end
+}, "AimSmoothness")
+
+Sections.CombatLeft:Dropdown({
+    Name = "Aim Part",
+    Multi = false,
+    Required = true,
+    Options = {"Head", "HumanoidRootPart", "Torso"},
+    Default = 1,
+    Callback = function(Value)
+        Config.AimPart = Value
+    end,
+}, "AimPart")
+
+Sections.CombatLeft:Divider()
+
+Sections.CombatLeft:Header({ Text = "Auto Combat" })
+
+Sections.CombatLeft:Toggle({
+    Name = "Kill All",
+    Default = false,
+    Callback = function(v)
+        Config.KillAll = v
+    end,
+}, "KillAll")
+
+Sections.CombatLeft:Toggle({
+    Name = "Auto Shoot (Left Click)",
+    Default = false,
+    Callback = function(v)
+        Config.AutoShoot = v
+    end,
+}, "AutoShoot")
+
+Sections.CombatLeft:Toggle({
+    Name = "Auto Stab (Right Click)",
+    Default = false,
+    Callback = function(v)
+        Config.AutoStab = v
+    end,
+}, "AutoStab")
+
+Sections.VisualLeft:Header({ Text = "Visuals" })
+
+Sections.VisualLeft:Toggle({
+    Name = "Esp Player",
+    Default = false,
+    Callback = function(v)
+        Config.ESP = v
+        if not v then
+            for _, o in pairs(Objects) do
+                if o.Name == "randomdevEspHighlight" then
+                    o:Destroy()
+                end
+            end
+        else
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and not p.Character:FindFirstChild("randomdevEspHighlight") then
+                    local hl = Instance.new("Highlight")
+                    hl.Name = "randomdevEspHighlight"
+                    hl.FillColor = Color3.fromRGB(255, 0, 0)
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    hl.FillTransparency = 0.5
+                    hl.Parent = p.Character
+                    table.insert(Objects, hl)
+                end
+            end
+        end
+    end,
+}, "ESP")
+
+Sections.ServerLeft:Header({ Text = "Teleport" })
+
+Sections.ServerLeft:Button({
+    Name = "Server Hop",
+    Callback = function()
+        Window:Notify({ Title = "Server Hop", Description = "Searching...", Lifetime = 3 })
+        local function getServerInstance()
+            local data = {}
+            local reqFunc = (syn and syn.request) or (http and http.request) or http_request or request
+            if reqFunc then
+                local req = reqFunc({Url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"})
+                data = game:GetService("HttpService"):JSONDecode(req.Body)
+            else
+                data = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+            end
+            return data
+        end
+        local servers = getServerInstance()
+        if servers and servers.data then
+            for i, v in pairs(servers.data) do
+                if v.playing < v.maxPlayers and v.id ~= game.JobId then
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, LocalPlayer)
+                    return
+                end
+            end
+        end
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    end
+})
+
+Sections.ServerLeft:Button({
+    Name = "Rejoin",
+    Callback = function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+Sections.SettingsLeft:Header({ Text = "Utility" })
+
+Sections.SettingsLeft:Toggle({
+    Name = "Anti AFK",
+    Default = false,
+    Callback = function(v)
+        if v then
+            Connections["AntiAFK"] = LocalPlayer.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+            Window:Notify({ Title = "Anti AFK", Description = "Enabled", Lifetime = 3 })
+        else
+            if Connections["AntiAFK"] then
+                Connections["AntiAFK"]:Disconnect()
+                Connections["AntiAFK"] = nil
+            end
+            Window:Notify({ Title = "Anti AFK", Description = "Disabled", Lifetime = 3 })
+        end
+    end,
+}, "AntiAFK")
+
+Sections.SettingsLeft:InsertConfigSection()
+
+local KillBox = Instance.new("Part")
+KillBox.Name = "randomdevKillBox"
+KillBox.Size = Vector3.new(10, 10, 10)
+KillBox.Transparency = 1
+KillBox.Anchored = true
+KillBox.CanCollide = false
+KillBox.Parent = workspace
+KillBox.CFrame = CFrame.new(0, -500, 0)
+table.insert(Objects, KillBox)
+
+local FlyBV, FlyBG
+local FlyControls = {f = 0, b = 0, l = 0, r = 0, u = 0, d = 0}
+local FlyVelocity = 0
+local FlyAcceleration = 2
+
+Connections["FlyInput"] = UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if Config.Fly then
+        if input.KeyCode == Enum.KeyCode.W then FlyControls.f = 1
+        elseif input.KeyCode == Enum.KeyCode.S then FlyControls.b = -1
+        elseif input.KeyCode == Enum.KeyCode.A then FlyControls.l = -1
+        elseif input.KeyCode == Enum.KeyCode.D then FlyControls.r = 1
+        elseif input.KeyCode == Enum.KeyCode.Space then FlyControls.u = 1
+        elseif input.KeyCode == Enum.KeyCode.LeftShift then FlyControls.d = -1
+        end
+    end
+end)
+
+Connections["FlyInputEnd"] = UserInputService.InputEnded:Connect(function(input, gpe)
+    if gpe then return end
+    if Config.Fly then
+        if input.KeyCode == Enum.KeyCode.W then FlyControls.f = 0
+        elseif input.KeyCode == Enum.KeyCode.S then FlyControls.b = 0
+        elseif input.KeyCode == Enum.KeyCode.A then FlyControls.l = 0
+        elseif input.KeyCode == Enum.KeyCode.D then FlyControls.r = 0
+        elseif input.KeyCode == Enum.KeyCode.Space then FlyControls.u = 0
+        elseif input.KeyCode == Enum.KeyCode.LeftShift then FlyControls.d = 0
+        end
+    end
+end)
+
+Connections["Loop"] = RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local hum = char:FindFirstChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+
+    if Config.Noclip then
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.CanCollide = false
+            end
+        end
+    end
+
+    if hum then
+        if Config.SpeedHack then hum.WalkSpeed = Config.WalkSpeed end
+        if Config.JumpHack then
+            hum.UseJumpPower = true
+            hum.JumpPower = Config.JumpPower
+        end
+    end
+
+    if Config.Fly and root then
+        if not FlyBV then
+            FlyBV = Instance.new("BodyVelocity", root)
+            FlyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+            FlyBV.Velocity = Vector3.zero
+            table.insert(Objects, FlyBV)
+        end
+        if not FlyBG then
+            FlyBG = Instance.new("BodyGyro", root)
+            FlyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+            FlyBG.P = 9e4
+            table.insert(Objects, FlyBG)
+        end
+
+        hum.PlatformStand = true
+        FlyBG.CFrame = Camera.CFrame
+        
+        local moveDir = Vector3.zero
+        if FlyControls.f + FlyControls.b ~= 0 or FlyControls.l + FlyControls.r ~= 0 or FlyControls.u + FlyControls.d ~= 0 then
+            FlyVelocity = math.min(FlyVelocity + FlyAcceleration, Config.FlySpeed)
+        else
+            FlyVelocity = math.max(FlyVelocity - FlyAcceleration, 0)
+        end
+        
+        moveDir = (Camera.CFrame.LookVector * (FlyControls.f + FlyControls.b))
+        moveDir = moveDir + (Camera.CFrame.RightVector * (FlyControls.l + FlyControls.r))
+        moveDir = moveDir + (Vector3.new(0, 1, 0) * (FlyControls.u + FlyControls.d))
+        
+        if moveDir.Magnitude > 0 then moveDir = moveDir.Unit * FlyVelocity end
+        FlyBV.Velocity = moveDir
+    else
+        if FlyBV then FlyBV:Destroy() FlyBV = nil end
+        if FlyBG then FlyBG:Destroy() FlyBG = nil end
+        if hum then hum.PlatformStand = false end
+    end
+end)
+
+Connections["AutoFarmLoop"] = RunService.RenderStepped:Connect(function()
+    if Config.AutoFarm then
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local container = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("CoinContainer")
+        
+        if root and container then
+            for _, obj in ipairs(container:GetChildren()) do
+                if obj.Name == "Coin_Server" and obj:IsA("BasePart") then
+                    obj.CFrame = root.CFrame
+                end
+            end
+        end
+        task.wait(Config.FarmSpeed)
+    end
+end)
+
+Connections["KillAllLoop"] = RunService.Heartbeat:Connect(function()
+    if Config.KillAll then
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            KillBox.CFrame = root.CFrame * CFrame.new(0, 0, -5)
+            for _, Target in ipairs(Players:GetPlayers()) do
+                if Target == LocalPlayer then continue end
+                local TChar = Target.Character
+                local TRoot = TChar and TChar:FindFirstChild("HumanoidRootPart")
+                local THum = TChar and TChar:FindFirstChild("Humanoid")
+                if TRoot and THum then
+                    TRoot.CFrame = KillBox.CFrame * CFrame.new(0, 0, 2)
+                    THum.PlatformStand = true
+                end
+            end
+        end
+    else
+        KillBox.CFrame = CFrame.new(0, -500, 0)
+    end
+end)
+
+Connections["AimbotLoop"] = RunService.RenderStepped:Connect(function()
+    if Config.Aimbot then
+        local closestDistance = math.huge
+        local closestTarget = nil
+        
+        for _, Player in ipairs(Players:GetPlayers()) do
+            if Player ~= LocalPlayer and Player.Character then
+                local TargetPart = Player.Character:FindFirstChild(Config.AimPart)
+                local Humanoid = Player.Character:FindFirstChild("Humanoid")
+                if TargetPart and Humanoid and Humanoid.Health > 0 then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(TargetPart.Position)
+                    if onScreen then
+                        local mousePos = UserInputService:GetMouseLocation()
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestTarget = TargetPart
+                        end
+                    end
+                end
+            end
+        end
+        
+        if closestTarget then
+            local currentCFrame = Camera.CFrame
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, closestTarget.Position)
+            Camera.CFrame = currentCFrame:Lerp(targetCFrame, Config.AimSmoothness)
+        end
+    end
+end)
+
+Connections["AutoShootLoop"] = task.spawn(function()
+    while task.wait(1) do
+        if Config.AutoShoot then
+            mouse1click()
+        end
+    end
+end)
+
+Connections["AutoStabLoop"] = task.spawn(function()
+    while task.wait(1) do
+        if Config.AutoStab then
+            local char = LocalPlayer.Character
+            if char then
+                local backpack = LocalPlayer:FindFirstChild("Backpack")
+                local tool = char:FindFirstChildOfClass("Tool") or (backpack and backpack:FindFirstChildOfClass("Tool"))
+                
+                if tool then
+                    if tool.Parent ~= char then
+                        char.Humanoid:EquipTool(tool)
+                    end
+                    mouse2click()
+                end
+            end
+        end
+    end
+end)
+
+Connections["InfJump"] = UserInputService.JumpRequest:Connect(function()
+    if Config.InfJump and LocalPlayer.Character then
+        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+Connections["ESPHandler"] = Players.PlayerAdded:Connect(function(p)
+    if Config.ESP then
+        p.CharacterAdded:Connect(function(char)
+            if not char:FindFirstChild("randomdevEspHighlight") then
+                local hl = Instance.new("Highlight")
+                hl.Name = "randomdevEspHighlight"
+                hl.FillColor = Color3.fromRGB(255, 0, 0)
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.FillTransparency = 0.5
+                hl.Parent = char
+                table.insert(Objects, hl)
+            end
+        end)
+    end
+end)
+
+MacLib:SetFolder("randomdevHub")
+Tabs.Settings:Select()
+MacLib:LoadAutoLoadConfig()
